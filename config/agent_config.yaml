@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────────
+#  AGENT CONFIG
+#  Change ONE line below to switch the agent type.
+#
+#  Options:
+#    react        → langchain.agents.create_react_agent
+#                   Classic Thought/Action/Observation loop
+#
+#    deep_agent   → langgraph.prebuilt.create_react_agent
+#                   Stateful graph agent with memory + streaming
+#
+#    tool_calling → langchain.agents.create_tool_calling_agent
+#                   Structured JSON tool dispatch, no text parsing
+# ─────────────────────────────────────────────────────────────────
+agent:
+  type: "react"    # ← CHANGE THIS LINE
+
+  llm:
+    model: "gpt-4o"
+    temperature: 0
+
+# Tools available to the agent
+tools:
+  - search
+  - calculator
+  - weather
+
+# Benchmark settings (used by: python main.py --benchmark)
+benchmark:
+  test_queries:
+    - "What is the capital of France and what is 2024 multiplied by 7?"
+    - "What is the weather in Mumbai? Also, calculate 15% tip on 500 INR."
+    - "Search for the latest news on AI agents and give me a 2-line summary."
+    - "Plan a 3-step process to build a ReAct agent in LangChain from scratch."
