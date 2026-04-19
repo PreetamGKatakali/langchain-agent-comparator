@@ -1,34 +1,59 @@
 """
 ReAct Agent
 ───────────
-Package  : langchain.agents  (classic LangChain)
+Package  : langgraph.prebuilt.create_react_agent
 Pattern  : Thought → Action → Observation → repeat
-Docs     : https://python.langchain.com/docs/how_to/agent_executor/
+Prompt   : System prompt that forces the LLM to reason step-by-step
+           before calling any tool.
 
 When to use:
-  ✅ Step-by-step tasks — needs to think aloud before acting
-  ✅ Open-ended Q&A with tool use
-  ✅ When you want full transparency of the reasoning chain
-  ✅ Works with any LLM (no function-calling support needed)
-  ❌ Verbose — generates a lot of text per step
-  ❌ Fragile if LLM doesn't follow Thought/Action format strictly
+  ✅ Tasks where you want the LLM to think aloud before acting
+  ✅ Debugging — you can see every reasoning step
+  ✅ Open-ended Q&A with multiple tool calls
+  ❌ Slower — more tokens due to reasoning text
 """
 
-from langchain import hub
-from langchain.agents import AgentExecutor, create_react_agent  # ← langchain.agents
+from langgraph.prebuilt import create_react_agent  # ← langgraph.prebuilt
+
+REACT_SYSTEM_PROMPT = """You are a helpful assistant that reasons step by step.
+
+Before calling any tool, always:
+1. Think about what the question is asking
+2. Decide which tool is needed and why
+3. Call the tool with the right input
+4. Observe the result and decide if more steps are needed
+
+Be explicit about your reasoning at every step.
+"""
 
 
-def build_react_agent(llm, tools) -> AgentExecutor:
-    # Standard hwchase17/react prompt — defines the Thought/Action/Observation format
-    prompt = hub.pull("hwchase17/react")
+class ReactAgent:
+    def __init__(self, llm, tools):
+        self.graph = create_react_agent(
+            model=llm,
+            tools=tools,
+            prompt=REACT_SYSTEM_PROMPT,
+        )
 
-    agent = create_react_agent(llm=llm, tools=tools, prompt=prompt)
+    def invoke(self, inputs: dict, config: dict = None) -> dict:
+        query = inputs.get("input", "")
+        result = self.graph.invoke(
+            {"messages": [("human", query)]},
+            config=config or {},
+        )
+        messages = result.get("messages", [])
+        final = messages[-1].content if messages else ""
+        return {"output": final, "messages": messages}
 
-    return AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=True,
-        handle_parsing_errors=True,
-        max_iterations=10,
-        return_intermediate_steps=True,
-    )
+    def stream(self, inputs: dict, config: dict = None):
+        query = inputs.get("input", "")
+        for chunk in self.graph.stream(
+            {"messages": [("human", query)]},
+            config=config or {},
+            stream_mode="updates",
+        ):
+            yield chunk
+
+
+def build_react_agent(llm, tools) -> ReactAgent:
+    return ReactAgent(llm=llm, tools=tools)

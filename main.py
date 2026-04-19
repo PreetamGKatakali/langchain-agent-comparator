@@ -17,13 +17,10 @@ Usage:
 import argparse
 import yaml
 from pathlib import Path
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-
 from agents import load_agent, AGENT_DESCRIPTIONS
 from tools import load_tools
-
-load_dotenv()
+from llm import get_llm
+from logger import ToolLogger
 CONFIG_PATH = Path(__file__).parent / "config" / "agent_config.yaml"
 
 
@@ -43,7 +40,6 @@ def main():
 
     print(f"\n{'='*55}")
     print(f"  Agent Type  : {agent_type.upper()}")
-    print(f"  Model       : {model}")
     print(f"  Tools       : {cfg['tools']}")
     print(f"  Package     : {AGENT_DESCRIPTIONS[agent_type]}")
     print(f"{'='*55}")
@@ -53,27 +49,31 @@ def main():
         run_benchmark()
         return
 
-    llm   = ChatOpenAI(model=model, temperature=temperature)
+    llm   = get_llm(model=model, temperature=temperature)
     tools = load_tools(cfg["tools"])
     agent = load_agent(agent_type, llm=llm, tools=tools)
 
     query = args.query or input("\nEnter your query: ").strip()
     print(f"\nQuery: {query}\n")
 
-    # deep_agent supports streaming
+    tool_logger = ToolLogger()
+    run_config = {"callbacks": [tool_logger]}
+
     if args.stream and hasattr(agent, "stream"):
         print("[Streaming output...]\n")
-        for chunk in agent.stream({"input": query}):
+        for chunk in agent.stream({"input": query}, config=run_config):
             for node, update in chunk.items():
                 messages = update.get("messages", [])
                 for msg in messages:
                     print(f"[{node}] {msg.content}")
+        tool_logger.print_summary()
         return
 
-    response = agent.invoke({"input": query})
+    response = agent.invoke({"input": query}, config=run_config)
     print(f"\n{'='*55}")
     print("FINAL ANSWER:")
     print(response.get("output", str(response)))
+    tool_logger.print_summary()
 
 
 if __name__ == "__main__":

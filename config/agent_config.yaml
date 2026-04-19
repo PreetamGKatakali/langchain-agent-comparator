@@ -13,10 +13,10 @@
 #                   Structured JSON tool dispatch, no text parsing
 # ─────────────────────────────────────────────────────────────────
 agent:
-  type: "react"    # ← CHANGE THIS LINE
+  type: "deep_agent"    # ← CHANGE THIS LINE
 
   llm:
-    model: "gpt-4o"
+    model: "reasoning_claude"
     temperature: 0
 
 # Tools available to the agent

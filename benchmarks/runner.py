@@ -6,10 +6,9 @@ Run directly:  python -m benchmarks.runner
 import time
 import yaml
 from pathlib import Path
-from langchain_openai import ChatOpenAI
-
 from agents import load_agent
 from tools import load_tools
+from llm import get_llm
 
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "agent_config.yaml"
@@ -30,7 +29,7 @@ def run_benchmark():
         print(f"  Agent: {agent_type.upper()}")
         print(f"{'='*60}")
 
-        llm = ChatOpenAI(
+        llm = get_llm(
             model=cfg["agent"]["llm"]["model"],
             temperature=cfg["agent"]["llm"]["temperature"],
         )
